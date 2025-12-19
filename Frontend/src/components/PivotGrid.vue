@@ -1,7 +1,12 @@
 <template>
   <div class="pivot-grid">
     <div class="grid-header">
-      <h2>Faschim Pivot Dashboard</h2>
+      <div class="header-left">
+        <h2>Faschim Pivot Dashboard</h2>
+        <button @click="toggleGrouped" class="group-toggle-btn">
+          {{ isGrouped ? '📋 Show All Rows' : '📊 Group by Protocollo' }}
+        </button>
+      </div>
       <div v-if="totalRows !== null" class="row-count">
         <span>Loaded: <strong>{{ loadedRows.toLocaleString() }}</strong></span>
         <span class="separator">|</span>
@@ -10,7 +15,7 @@
     </div>
     <ag-grid-vue
       class="ag-theme-alpine"
-      :columnDefs="columnDefs"
+      :columnDefs="isGrouped ? groupedColumnDefs : columnDefs"
       :defaultColDef="defaultColDef"
       :rowModelType="'infinite'"
       :datasource="datasource"
@@ -39,6 +44,49 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 const gridApi = ref<GridApi | null>(null)
 const totalRows = ref<number | null>(null)
 const loadedRows = ref<number>(0)
+const isGrouped = ref<boolean>(false)
+
+const groupedColumnDefs = ref<ColDef[]>([
+  { 
+    field: 'numeroProtocollo', 
+    headerName: 'Protocollo', 
+    filter: 'agTextColumnFilter', 
+    sortable: true,
+    pinned: 'left',
+    width: 150
+  },
+  { 
+    field: 'count', 
+    headerName: 'N° Righe', 
+    filter: 'agNumberColumnFilter', 
+    sortable: true,
+    width: 100
+  },
+  { 
+    field: 'utenteLiquidatore', 
+    headerName: 'Utente Liquidatore', 
+    filter: 'agTextColumnFilter', 
+    sortable: true 
+  },
+  { 
+    field: 'dataPresentazione', 
+    headerName: 'Presentazione', 
+    filter: 'agTextColumnFilter', 
+    sortable: true 
+  },
+  { 
+    field: 'formaAssistenza', 
+    headerName: 'Forma Assistenza', 
+    filter: 'agTextColumnFilter', 
+    sortable: true 
+  },
+  { 
+    field: 'statoPratica', 
+    headerName: 'Stato Pratica', 
+    filter: 'agTextColumnFilter', 
+    sortable: true 
+  }
+])
 
 const columnDefs = ref<ColDef[]>([
   { 
@@ -140,7 +188,16 @@ const datasource = ref<IDatasource>({
         filterModel: params.filterModel
       }
 
-      const response = await fetchPivotData(request)
+      // Use different endpoint based on grouped state
+      const url = isGrouped.value ? 'http://localhost:5000/api/pivot-data-grouped' : 'http://localhost:5000/api/pivot-data'
+      
+      const fetchResponse = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      })
+      
+      const response = await fetchResponse.json()
       
       // Update total rows count
       if (response.rowCount !== undefined) {
@@ -168,6 +225,16 @@ const datasource = ref<IDatasource>({
   }
 })
 
+const toggleGrouped = () => {
+  isGrouped.value = !isGrouped.value
+  // Reset and reload grid
+  if (gridApi.value) {
+    totalRows.value = null
+    loadedRows.value = 0
+    gridApi.value.setGridOption('datasource', datasource.value)
+  }
+}
+
 const onGridReady = (params: GridReadyEvent) => {
   gridApi.value = params.api
   console.log('Grid ready with Infinite Row Model (AG Grid Community)')
@@ -189,10 +256,35 @@ const onGridReady = (params: GridReadyEvent) => {
   padding: 10px 0;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .grid-header h2 {
   margin: 0;
   font-size: 1.5rem;
   color: #333;
+}
+
+.group-toggle-btn {
+  padding: 8px 16px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.group-toggle-btn:hover {
+  background-color: #1565c0;
+}
+
+.group-toggle-btn:active {
+  background-color: #0d47a1;
 }
 
 .row-count {

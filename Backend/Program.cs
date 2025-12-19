@@ -118,4 +118,91 @@ app.MapPost("/api/pivot-data", async (PivotRequest request, MyDbContext db) =>
     }
 });
 
+// Grouped by Protocollo endpoint
+app.MapPost("/api/pivot-data-grouped", async (PivotRequest request, MyDbContext db) =>
+{
+    try
+    {
+        var query = db.FullKeplero.AsQueryable();
+
+        // Apply filters first
+        if (request.FilterModel != null)
+        {
+            foreach (var filter in request.FilterModel)
+            {
+                var colId = filter.Key;
+                var filterValue = filter.Value;
+
+                if (filterValue.FilterType == "text" && !string.IsNullOrEmpty(filterValue.Filter))
+                {
+                    var searchValue = filterValue.Filter.ToLower();
+                    query = colId switch
+                    {
+                        "numeroProtocollo" => query.Where(x => x.NumeroProtocollo.ToLower().Contains(searchValue)),
+                        "utenteLiquidatore" => query.Where(x => x.UtenteLiquidatore != null && x.UtenteLiquidatore.ToLower().Contains(searchValue)),
+                        "dataPresentazione" => query.Where(x => x.DataPresentazione.ToLower().Contains(searchValue)),
+                        "statoPratica" => query.Where(x => x.StatoPratica.ToLower().Contains(searchValue)),
+                        "formaAssistenza" => query.Where(x => x.FormaAssistenza.ToLower().Contains(searchValue)),
+                        _ => query
+                    };
+                }
+            }
+        }
+
+        // Group by NumeroProtocollo
+        var groupedQuery = query
+            .GroupBy(x => x.NumeroProtocollo)
+            .Select(g => new ProtocolloGrouped
+            {
+                NumeroProtocollo = g.Key,
+                Count = g.Count(),
+                UtenteLiquidatore = g.Select(x => x.UtenteLiquidatore).FirstOrDefault(),
+                DataPresentazione = g.Select(x => x.DataPresentazione).FirstOrDefault(),
+                StatoPratica = g.Select(x => x.StatoPratica).FirstOrDefault(),
+                FormaAssistenza = g.Select(x => x.FormaAssistenza).FirstOrDefault()
+            });
+
+        // Apply sorting
+        if (request.SortModel != null && request.SortModel.Count > 0)
+        {
+            var firstSort = request.SortModel[0];
+            var isAscending = firstSort.Sort == "asc";
+
+            groupedQuery = firstSort.ColId switch
+            {
+                "numeroProtocollo" => isAscending ? groupedQuery.OrderBy(x => x.NumeroProtocollo) : groupedQuery.OrderByDescending(x => x.NumeroProtocollo),
+                "count" => isAscending ? groupedQuery.OrderBy(x => x.Count) : groupedQuery.OrderByDescending(x => x.Count),
+                "utenteLiquidatore" => isAscending ? groupedQuery.OrderBy(x => x.UtenteLiquidatore) : groupedQuery.OrderByDescending(x => x.UtenteLiquidatore),
+                "dataPresentazione" => isAscending ? groupedQuery.OrderBy(x => x.DataPresentazione) : groupedQuery.OrderByDescending(x => x.DataPresentazione),
+                "statoPratica" => isAscending ? groupedQuery.OrderBy(x => x.StatoPratica) : groupedQuery.OrderByDescending(x => x.StatoPratica),
+                "formaAssistenza" => isAscending ? groupedQuery.OrderBy(x => x.FormaAssistenza) : groupedQuery.OrderByDescending(x => x.FormaAssistenza),
+                _ => groupedQuery.OrderBy(x => x.NumeroProtocollo)
+            };
+        }
+        else
+        {
+            groupedQuery = groupedQuery.OrderBy(x => x.NumeroProtocollo);
+        }
+
+        // Get total count before pagination
+        var totalCount = await groupedQuery.CountAsync();
+
+        // Apply pagination
+        var data = await groupedQuery
+            .Skip(request.StartRow)
+            .Take(request.EndRow - request.StartRow)
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            rowData = data,
+            rowCount = totalCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
 app.Run();
