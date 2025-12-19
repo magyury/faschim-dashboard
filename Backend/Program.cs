@@ -44,25 +44,25 @@ app.MapPost("/api/pivot-data", async (PivotRequest request, MyDbContext db) =>
 
                 if (filterValue.FilterType == "text" && !string.IsNullOrEmpty(filterValue.Filter))
                 {
-                    var searchValue = filterValue.Filter;
+                    var searchValue = filterValue.Filter.ToLower();
                     query = colId switch
                     {
-                        "utenteLiquidatore" => query.Where(x => x.UtenteLiquidatore != null && x.UtenteLiquidatore.Contains(searchValue)),
-                        "numeroProtocollo" => query.Where(x => x.NumeroProtocollo.Contains(searchValue)),
-                        "dataPresentazione" => query.Where(x => x.DataPresentazione.Contains(searchValue)),
-                        "dataInserimento" => query.Where(x => x.DataInserimento.Contains(searchValue)),
-                        "modified" => query.Where(x => x.Modified.Contains(searchValue)),
-                        "descrizioneGruppoTariffa" => query.Where(x => x.DescrizioneGruppoTariffa != null && x.DescrizioneGruppoTariffa.Contains(searchValue)),
-                        "formaAssistenza" => query.Where(x => x.FormaAssistenza.Contains(searchValue)),
-                        "importoRichiesto" => query.Where(x => x.ImportoRichiesto != null && x.ImportoRichiesto.Contains(searchValue)),
-                        "importoRiconosciuto" => query.Where(x => x.ImportoRiconosciuto != null && x.ImportoRiconosciuto.Contains(searchValue)),
-                        "dataPagamento" => query.Where(x => x.DataPagamento != null && x.DataPagamento.Contains(searchValue)),
-                        "cognomePersona" => query.Where(x => x.CognomePersona.Contains(searchValue)),
-                        "nomePersona" => query.Where(x => x.NomePersona.Contains(searchValue)),
-                        "cognomeBeneficiario" => query.Where(x => x.CognomeBeneficiario.Contains(searchValue)),
-                        "nomeBeneficiario" => query.Where(x => x.NomeBeneficiario.Contains(searchValue)),
-                        "unisalInviato" => query.Where(x => x.UnisalInviato != null && x.UnisalInviato.Contains(searchValue)),
-                        "statoPratica" => query.Where(x => x.StatoPratica.Contains(searchValue)),
+                        "utenteLiquidatore" => query.Where(x => x.UtenteLiquidatore != null && x.UtenteLiquidatore.ToLower().Contains(searchValue)),
+                        "numeroProtocollo" => query.Where(x => x.NumeroProtocollo.ToLower().Contains(searchValue)),
+                        "dataPresentazione" => query.Where(x => x.DataPresentazione.ToLower().Contains(searchValue)),
+                        "dataInserimento" => query.Where(x => x.DataInserimento.ToLower().Contains(searchValue)),
+                        "modified" => query.Where(x => x.Modified.ToLower().Contains(searchValue)),
+                        "descrizioneGruppoTariffa" => query.Where(x => x.DescrizioneGruppoTariffa != null && x.DescrizioneGruppoTariffa.ToLower().Contains(searchValue)),
+                        "formaAssistenza" => query.Where(x => x.FormaAssistenza.ToLower().Contains(searchValue)),
+                        "importoRichiesto" => query.Where(x => x.ImportoRichiesto != null && x.ImportoRichiesto.ToLower().Contains(searchValue)),
+                        "importoRiconosciuto" => query.Where(x => x.ImportoRiconosciuto != null && x.ImportoRiconosciuto.ToLower().Contains(searchValue)),
+                        "dataPagamento" => query.Where(x => x.DataPagamento != null && x.DataPagamento.ToLower().Contains(searchValue)),
+                        "cognomePersona" => query.Where(x => x.CognomePersona.ToLower().Contains(searchValue)),
+                        "nomePersona" => query.Where(x => x.NomePersona.ToLower().Contains(searchValue)),
+                        "cognomeBeneficiario" => query.Where(x => x.CognomeBeneficiario.ToLower().Contains(searchValue)),
+                        "nomeBeneficiario" => query.Where(x => x.NomeBeneficiario.ToLower().Contains(searchValue)),
+                        "unisalInviato" => query.Where(x => x.UnisalInviato != null && x.UnisalInviato.ToLower().Contains(searchValue)),
+                        "statoPratica" => query.Where(x => x.StatoPratica.ToLower().Contains(searchValue)),
                         _ => query
                     };
                 }

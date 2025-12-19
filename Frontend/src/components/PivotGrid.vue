@@ -3,7 +3,9 @@
     <div class="grid-header">
       <h2>Faschim Pivot Dashboard</h2>
       <div v-if="totalRows !== null" class="row-count">
-        Total Rows: <strong>{{ totalRows.toLocaleString() }}</strong>
+        <span>Loaded: <strong>{{ loadedRows.toLocaleString() }}</strong></span>
+        <span class="separator">|</span>
+        <span>Total: <strong>{{ totalRows.toLocaleString() }}</strong></span>
       </div>
     </div>
     <ag-grid-vue
@@ -36,6 +38,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 const gridApi = ref<GridApi | null>(null)
 const totalRows = ref<number | null>(null)
+const loadedRows = ref<number>(0)
 
 const columnDefs = ref<ColDef[]>([
   { 
@@ -44,7 +47,7 @@ const columnDefs = ref<ColDef[]>([
     filter: 'agNumberColumnFilter', 
     sortable: true,
     width: 80,
-    hide: true
+    pinned: 'left'
   },
   { 
     field: 'utenteLiquidatore', 
@@ -144,6 +147,9 @@ const datasource = ref<IDatasource>({
         totalRows.value = response.rowCount
       }
       
+      // Update loaded rows count
+      loadedRows.value = params.startRow! + response.rowData.length
+      
       // Calculate last row
       let lastRow = -1
       if (response.rowData.length < (params.endRow! - params.startRow!)) {
@@ -192,6 +198,13 @@ const onGridReady = (params: GridReadyEvent) => {
 .row-count {
   font-size: 1rem;
   color: #666;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.row-count .separator {
+  color: #ccc;
 }
 
 .row-count strong {

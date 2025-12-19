@@ -20,3 +20,13 @@ public class FilterModel
     public string? Filter { get; set; }
     public string? Type { get; set; }
 }
+
+public class ProtocolloGrouped
+{
+    public string NumeroProtocollo { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public string? UtenteLiquidatore { get; set; }
+    public string? DataPresentazione { get; set; }
+    public string? StatoPratica { get; set; }
+    public string? FormaAssistenza { get; set; }
+}
