@@ -1,5 +1,11 @@
 <template>
   <div class="pivot-grid">
+    <div class="grid-header">
+      <h2>Faschim Pivot Dashboard</h2>
+      <div v-if="totalRows !== null" class="row-count">
+        Total Rows: <strong>{{ totalRows.toLocaleString() }}</strong>
+      </div>
+    </div>
     <ag-grid-vue
       class="ag-theme-alpine"
       :columnDefs="columnDefs"
@@ -29,6 +35,7 @@ import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 const gridApi = ref<GridApi | null>(null)
+const totalRows = ref<number | null>(null)
 
 const columnDefs = ref<ColDef[]>([
   { 
@@ -132,6 +139,11 @@ const datasource = ref<IDatasource>({
 
       const response = await fetchPivotData(request)
       
+      // Update total rows count
+      if (response.rowCount !== undefined) {
+        totalRows.value = response.rowCount
+      }
+      
       // Calculate last row
       let lastRow = -1
       if (response.rowData.length < (params.endRow! - params.startRow!)) {
@@ -161,6 +173,30 @@ const onGridReady = (params: GridReadyEvent) => {
   width: 100%;
   height: 100%;
   padding: 20px;
+}
+
+.grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 0;
+}
+
+.grid-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.row-count {
+  font-size: 1rem;
+  color: #666;
+}
+
+.row-count strong {
+  color: #1976d2;
+  font-size: 1.1rem;
 }
 
 .ag-theme-alpine {
