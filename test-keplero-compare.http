@@ -1,0 +1,12 @@
+### Test Keplero Compare Endpoint
+POST http://localhost:5000/api/keplero-compare
+Content-Type: application/json
+
+{
+  "startRow": 0,
+  "endRow": 100,
+  "sortModel": [],
+  "filterModel": {}
+}
+
+###

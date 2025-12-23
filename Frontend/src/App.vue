@@ -2,6 +2,10 @@
   <div id="app">
     <header>
       <h1>Faschim Pivot Dashboard</h1>
+      <nav>
+        <router-link to="/">Keplero Full</router-link>
+        <router-link to="/keplero-compare">Keplero Compare</router-link>
+      </nav>
     </header>
     <main>
       <router-view />
@@ -40,6 +44,29 @@ header {
 
 header h1 {
   font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+nav a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+nav a.router-link-active {
+  background-color: rgba(255, 255, 255, 0.2);
   font-weight: 600;
 }
 

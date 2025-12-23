@@ -29,6 +29,17 @@ export const fetchPivotData = async (request: PivotRequest): Promise<PivotRespon
   }
 }
 
+// Second table API
+export const fetchSecondTableData = async (request: PivotRequest): Promise<PivotResponse> => {
+  try {
+    const response = await apiClient.post<PivotResponse>('/pivot-data-second', request)
+    return response.data
+  } catch (error) {
+    console.error('API Error (Second Table):', error)
+    throw error
+  }
+}
+
 export const checkHealth = async () => {
   try {
     const response = await apiClient.get('/health')
@@ -37,6 +48,26 @@ export const checkHealth = async () => {
     console.error('Health check failed:', error)
     throw error
   }
+}
+
+// Keplero Compare APIs
+export interface KepleroCompareStatistics {
+  totalRecords: number
+  byCoda: Array<{ coda: string; count: number }>
+  byStatoPratica: Array<{ statoPratica: string; count: number }>
+  byStato: Array<{ stato: string; count: number }>
+  byStatoPraticaKeplero: Array<{ statoPraticaKeplero: string; count: number }>
+  byEsito: Array<{ esito: string; count: number }>
+}
+
+export const fetchKepleroCompareData = async (request: PivotRequest): Promise<PivotResponse> => {
+  const response = await apiClient.post<PivotResponse>('/keplero-compare', request)
+  return response.data
+}
+
+export const fetchKepleroCompareStatistics = async (): Promise<KepleroCompareStatistics> => {
+  const response = await apiClient.get<KepleroCompareStatistics>('/keplero-compare/statistics')
+  return response.data
 }
 
 export default apiClient

@@ -10,7 +10,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:4280")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:4280")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -197,6 +197,224 @@ app.MapPost("/api/pivot-data-grouped", async (PivotRequest request, MyDbContext 
         {
             rowData = data,
             rowCount = totalCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Second table endpoint - add your table-specific logic
+app.MapPost("/api/pivot-data-second", async (PivotRequest request, MyDbContext db) =>
+{
+    try
+    {
+        var query = db.SecondTable.AsQueryable();
+
+        // Apply filters (customize based on your SecondTable columns)
+        if (request.FilterModel != null)
+        {
+            foreach (var filter in request.FilterModel)
+            {
+                var colId = filter.Key;
+                var filterValue = filter.Value;
+
+                if (filterValue.FilterType == "text" && !string.IsNullOrEmpty(filterValue.Filter))
+                {
+                    var searchValue = filterValue.Filter.ToLower();
+                    // TODO: Add your column filters here
+                    query = colId switch
+                    {
+                        "column1" => query.Where(x => x.Column1 != null && x.Column1.ToLower().Contains(searchValue)),
+                        "column2" => query.Where(x => x.Column2 != null && x.Column2.ToLower().Contains(searchValue)),
+                        _ => query
+                    };
+                }
+            }
+        }
+
+        // Apply sorting (customize based on your SecondTable columns)
+        if (request.SortModel != null && request.SortModel.Count > 0)
+        {
+            var firstSort = request.SortModel[0];
+            var isAscending = firstSort.Sort == "asc";
+
+            query = firstSort.ColId switch
+            {
+                "id" => isAscending ? query.OrderBy(x => x.Id) : query.OrderByDescending(x => x.Id),
+                "column1" => isAscending ? query.OrderBy(x => x.Column1) : query.OrderByDescending(x => x.Column1),
+                "column2" => isAscending ? query.OrderBy(x => x.Column2) : query.OrderByDescending(x => x.Column2),
+                _ => query.OrderBy(x => x.Id)
+            };
+        }
+        else
+        {
+            query = query.OrderBy(x => x.Id);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var data = await query
+            .Skip(request.StartRow)
+            .Take(request.EndRow - request.StartRow)
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            rowData = data,
+            rowCount = totalCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Endpoint for keplero_compare table
+app.MapPost("/api/keplero-compare", async (PivotRequest request, MyDbContext db) =>
+{
+    try
+    {
+        var query = db.KepleroCompare.AsQueryable();
+
+        // Apply filters
+        if (request.FilterModel != null)
+        {
+            foreach (var filter in request.FilterModel)
+            {
+                var colId = filter.Key;
+                var filterValue = filter.Value;
+
+                if (filterValue.FilterType == "text" && !string.IsNullOrEmpty(filterValue.Filter))
+                {
+                    var searchValue = filterValue.Filter.ToLower();
+                    query = colId.ToLower() switch
+                    {
+                        "protocollo" => query.Where(x => x.Protocollo != null && x.Protocollo.ToLower().Contains(searchValue)),
+                        "coda" => query.Where(x => x.Coda != null && x.Coda.ToLower().Contains(searchValue)),
+                        "statopratica" => query.Where(x => x.StatoPratica != null && x.StatoPratica.ToLower().Contains(searchValue)),
+                        "stato" => query.Where(x => x.Stato != null && x.Stato.ToLower().Contains(searchValue)),
+                        "esito" => query.Where(x => x.Esito != null && x.Esito.ToLower().Contains(searchValue)),
+                        "statopratica_keplero" => query.Where(x => x.StatoPratica_Keplero.ToLower().Contains(searchValue)),
+                        _ => query
+                    };
+                }
+                else if (filterValue.FilterType == "number" && filterValue.Filter != null)
+                {
+                    if (int.TryParse(filterValue.Filter, out var numValue))
+                    {
+                        query = colId.ToLower() switch
+                        {
+                            "itemid" => query.Where(x => x.ItemId == numValue),
+                            "riga" => query.Where(x => x.Riga == numValue),
+                            _ => query
+                        };
+                    }
+                }
+            }
+        }
+
+        // Apply sorting
+        if (request.SortModel != null && request.SortModel.Count > 0)
+        {
+            var firstSort = request.SortModel[0];
+            var isAscending = firstSort.Sort == "asc";
+
+            query = firstSort.ColId.ToLower() switch
+            {
+                "id" => isAscending ? query.OrderBy(x => x.Id) : query.OrderByDescending(x => x.Id),
+                "itemid" => isAscending ? query.OrderBy(x => x.ItemId) : query.OrderByDescending(x => x.ItemId),
+                "protocollo" => isAscending ? query.OrderBy(x => x.Protocollo) : query.OrderByDescending(x => x.Protocollo),
+                "coda" => isAscending ? query.OrderBy(x => x.Coda) : query.OrderByDescending(x => x.Coda),
+                "statopratica" => isAscending ? query.OrderBy(x => x.StatoPratica) : query.OrderByDescending(x => x.StatoPratica),
+                "stato" => isAscending ? query.OrderBy(x => x.Stato) : query.OrderByDescending(x => x.Stato),
+                "esito" => isAscending ? query.OrderBy(x => x.Esito) : query.OrderByDescending(x => x.Esito),
+                "dataesito" => isAscending ? query.OrderBy(x => x.DataEsito) : query.OrderByDescending(x => x.DataEsito),
+                "statopratica_keplero" => isAscending ? query.OrderBy(x => x.StatoPratica_Keplero) : query.OrderByDescending(x => x.StatoPratica_Keplero),
+                "riga" => isAscending ? query.OrderBy(x => x.Riga) : query.OrderByDescending(x => x.Riga),
+                _ => isAscending ? query.OrderBy(x => x.Id) : query.OrderByDescending(x => x.Id)
+            };
+        }
+        else
+        {
+            query = query.OrderBy(x => x.Id);
+        }
+       
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var data = await query
+            .Skip(request.StartRow)
+            .Take(request.EndRow - request.StartRow)
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            rowData = data,
+            rowCount = totalCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Statistics endpoint for Keplero Compare
+app.MapGet("/api/keplero-compare/statistics", async (MyDbContext db) =>
+{
+    try
+    {
+        var totalRecords = await db.KepleroCompare.CountAsync();
+        
+        // Group by Coda
+        var byCoda = await db.KepleroCompare
+            .GroupBy(x => x.Coda)
+            .Select(g => new { Coda = g.Key ?? "N/A", Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        // Group by StatoPratica
+        var byStatoPratica = await db.KepleroCompare
+            .GroupBy(x => x.StatoPratica)
+            .Select(g => new { StatoPratica = g.Key ?? "N/A", Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        // Group by Stato
+        var byStato = await db.KepleroCompare
+            .GroupBy(x => x.Stato)
+            .Select(g => new { Stato = g.Key ?? "N/A", Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        // Group by StatoPratica_Keplero
+        var byStatoPraticaKeplero = await db.KepleroCompare
+            .GroupBy(x => x.StatoPratica_Keplero)
+            .Select(g => new { StatoPraticaKeplero = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        // Group by Esito
+        var byEsito = await db.KepleroCompare
+            .GroupBy(x => x.Esito)
+            .Select(g => new { Esito = g.Key ?? "N/A", Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            totalRecords,
+            byCoda,
+            byStatoPratica,
+            byStato,
+            byStatoPraticaKeplero,
+            byEsito
         });
     }
     catch (Exception ex)
