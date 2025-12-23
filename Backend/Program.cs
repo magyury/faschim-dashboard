@@ -27,6 +27,25 @@ app.UseCors("AllowFrontend");
 // Health check endpoint
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
+// Get distinct StatoPratica values for filter dropdown
+app.MapGet("/api/stato-pratica-values", async (MyDbContext db) =>
+{
+    try
+    {
+        var values = await db.FullKeplero
+            .Select(x => x.StatoPratica)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+        
+        return Results.Ok(values);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
 // SSRM endpoint for ag-Grid
 app.MapPost("/api/pivot-data", async (PivotRequest request, MyDbContext db) =>
 {

@@ -13,6 +13,58 @@
         <span>Total: <strong>{{ totalRows.toLocaleString() }}</strong></span>
       </div>
     </div>
+
+    <!-- Search Form -->
+    <div class="search-form">
+      <div class="search-fields">
+        <div class="search-field">
+          <label for="search-protocollo">Protocollo</label>
+          <input
+            id="search-protocollo"
+            v-model="searchFilters.protocollo"
+            type="text"
+            placeholder="Search by Protocollo..."
+            @keyup.enter="handleSearch"
+          />
+        </div>
+        <div class="search-field">
+          <label for="search-stato-pratica">Stato Pratica</label>
+          <select
+            id="search-stato-pratica"
+            v-model="searchFilters.statoPratica"
+            @change="handleSearch"
+          >
+            <option value="">All</option>
+            <option v-for="stato in statoPraticaOptions" :key="stato" :value="stato">
+              {{ stato }}
+            </option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label for="search-inserimento">Inserimento</label>
+          <input
+            id="search-inserimento"
+            v-model="searchFilters.inserimento"
+            type="date"
+            @change="handleSearch"
+          />
+        </div>
+        <div class="search-field">
+          <label for="search-modified">Modificato</label>
+          <input
+            id="search-modified"
+            v-model="searchFilters.modified"
+            type="date"
+            @change="handleSearch"
+          />
+        </div>
+      </div>
+      <div class="search-actions">
+        <button @click="handleSearch" class="btn-search">🔍 Search</button>
+        <button @click="clearSearch" class="btn-clear">✖ Clear</button>
+      </div>
+    </div>
+
     <ag-grid-vue
       class="ag-theme-alpine"
       :columnDefs="isGrouped ? groupedColumnDefs : columnDefs"
@@ -34,9 +86,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import { fetchPivotData } from '@/services/api'
+import { fetchPivotData, fetchStatoPraticaValues } from '@/services/api'
 import type { ColDef, GridApi, GridReadyEvent, IDatasource } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -45,6 +97,15 @@ const gridApi = ref<GridApi | null>(null)
 const totalRows = ref<number | null>(null)
 const loadedRows = ref<number>(0)
 const isGrouped = ref<boolean>(false)
+
+const searchFilters = ref({
+  protocollo: '',
+  statoPratica: '',
+  inserimento: '',
+  modified: ''
+})
+
+const statoPraticaOptions = ref<string[]>([])
 
 const groupedColumnDefs = ref<ColDef[]>([
   { 
@@ -181,11 +242,44 @@ const datasource = ref<IDatasource>({
     try {
       console.log('Fetching rows from', params.startRow, 'to', params.endRow)
       
+      // Build filter model with search filters
+      const filterModel = params.filterModel || {}
+      
+      // Add search filters if they exist
+      if (searchFilters.value.protocollo) {
+        filterModel['numeroProtocollo'] = {
+          filterType: 'text',
+          type: 'contains',
+          filter: searchFilters.value.protocollo
+        }
+      }
+      if (searchFilters.value.statoPratica) {
+        filterModel['statoPratica'] = {
+          filterType: 'text',
+          type: 'contains',
+          filter: searchFilters.value.statoPratica
+        }
+      }
+      if (searchFilters.value.inserimento) {
+        filterModel['dataInserimento'] = {
+          filterType: 'text',
+          type: 'contains',
+          filter: searchFilters.value.inserimento
+        }
+      }
+      if (searchFilters.value.modified) {
+        filterModel['modified'] = {
+          filterType: 'text',
+          type: 'contains',
+          filter: searchFilters.value.modified
+        }
+      }
+      
       const request = {
         startRow: params.startRow!,
         endRow: params.endRow!,
         sortModel: params.sortModel,
-        filterModel: params.filterModel
+        filterModel: filterModel
       }
 
       // Use different endpoint based on grouped state
@@ -235,10 +329,43 @@ const toggleGrouped = () => {
   }
 }
 
+const handleSearch = () => {
+  if (gridApi.value) {
+    totalRows.value = null
+    loadedRows.value = 0
+    gridApi.value.setGridOption('datasource', datasource.value)
+    console.log('Search filters applied:', searchFilters.value)
+  }
+}
+
+const clearSearch = () => {
+  searchFilters.value = {
+    protocollo: '',
+    statoPratica: '',
+    inserimento: '',
+    modified: ''
+  }
+  if (gridApi.value) {
+    totalRows.value = null
+    loadedRows.value = 0
+    gridApi.value.setGridOption('datasource', datasource.value)
+    console.log('Search filters cleared')
+  }
+}
+
 const onGridReady = (params: GridReadyEvent) => {
   gridApi.value = params.api
   console.log('Grid ready with Infinite Row Model (AG Grid Community)')
 }
+
+onMounted(async () => {
+  try {
+    statoPraticaOptions.value = await fetchStatoPraticaValues()
+    console.log('Loaded StatoPratica options:', statoPraticaOptions.value.length)
+  } catch (error) {
+    console.error('Error loading StatoPratica options:', error)
+  }
+})
 </script>
 
 <style scoped>
@@ -285,6 +412,92 @@ const onGridReady = (params: GridReadyEvent) => {
 
 .group-toggle-btn:active {
   background-color: #0d47a1;
+}
+
+.search-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+.search-field input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.search-field select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  background-color: white;
+  cursor: pointer;
+}
+
+.search-field input:focus,
+.search-field select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.search-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-search,
+.btn-clear {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-search {
+  background-color: #1976d2;
+  color: white;
+}
+
+.btn-search:hover {
+  background-color: #1565c0;
+}
+
+.btn-clear {
+  background-color: #666;
+  color: white;
+}
+
+.btn-clear:hover {
+  background-color: #555;
 }
 
 .row-count {

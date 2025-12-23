@@ -50,6 +50,16 @@ export const checkHealth = async () => {
   }
 }
 
+export const fetchStatoPraticaValues = async (): Promise<string[]> => {
+  try {
+    const response = await apiClient.get<string[]>('/stato-pratica-values')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching StatoPratica values:', error)
+    throw error
+  }
+}
+
 // Keplero Compare APIs
 export interface KepleroCompareStatistics {
   totalRecords: number
