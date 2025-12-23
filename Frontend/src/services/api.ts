@@ -60,6 +60,46 @@ export const fetchStatoPraticaValues = async (): Promise<string[]> => {
   }
 }
 
+export const fetchCodaValues = async (): Promise<string[]> => {
+  try {
+    const response = await apiClient.get<string[]>('/keplero-compare/coda-values')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching Coda values:', error)
+    throw error
+  }
+}
+
+export const fetchStatoValues = async (): Promise<string[]> => {
+  try {
+    const response = await apiClient.get<string[]>('/keplero-compare/stato-values')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching Stato values:', error)
+    throw error
+  }
+}
+
+export const fetchEsitoValues = async (): Promise<string[]> => {
+  try {
+    const response = await apiClient.get<string[]>('/keplero-compare/esito-values')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching Esito values:', error)
+    throw error
+  }
+}
+
+export const fetchStatoKepleroValues = async (): Promise<string[]> => {
+  try {
+    const response = await apiClient.get<string[]>('/keplero-compare/stato-keplero-values')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching StatoPratica_Keplero values:', error)
+    throw error
+  }
+}
+
 // Keplero Compare APIs
 export interface KepleroCompareStatistics {
   totalRecords: number

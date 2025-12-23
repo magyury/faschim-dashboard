@@ -80,6 +80,7 @@
       :ensureDomOrder="true"
       :enableRangeSelection="true"
       @grid-ready="onGridReady"
+      @cell-double-clicked="onCellDoubleClicked"
       style="height: 600px;"
     />
   </div>
@@ -350,6 +351,19 @@ const clearSearch = () => {
     loadedRows.value = 0
     gridApi.value.setGridOption('datasource', datasource.value)
     console.log('Search filters cleared')
+  }
+}
+
+const onCellDoubleClicked = (event: any) => {
+  // Check if the double-clicked cell is in the Protocollo column
+  if (event.column.colId === 'numeroProtocollo') {
+    const protocolloValue = event.value
+    if (protocolloValue) {
+      searchFilters.value.protocollo = protocolloValue
+      console.log('Protocollo field populated with:', protocolloValue)
+      // Automatically trigger search
+      handleSearch()
+    }
   }
 }
 

@@ -46,6 +46,85 @@ app.MapGet("/api/stato-pratica-values", async (MyDbContext db) =>
     }
 });
 
+// Get distinct Coda values for Keplero Compare filter dropdown
+app.MapGet("/api/keplero-compare/coda-values", async (MyDbContext db) =>
+{
+    try
+    {
+        var values = await db.KepleroCompare
+            .Where(x => x.Coda != null)
+            .Select(x => x.Coda!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+        
+        return Results.Ok(values);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Get distinct Stato values for Keplero Compare filter dropdown
+app.MapGet("/api/keplero-compare/stato-values", async (MyDbContext db) =>
+{
+    try
+    {
+        var values = await db.KepleroCompare
+            .Where(x => x.Stato != null)
+            .Select(x => x.Stato!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+        
+        return Results.Ok(values);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Get distinct Esito values for Keplero Compare filter dropdown
+app.MapGet("/api/keplero-compare/esito-values", async (MyDbContext db) =>
+{
+    try
+    {
+        var values = await db.KepleroCompare
+            .Where(x => x.Esito != null)
+            .Select(x => x.Esito!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+        
+        return Results.Ok(values);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
+// Get distinct StatoPratica_Keplero values for Keplero Compare filter dropdown
+app.MapGet("/api/keplero-compare/stato-keplero-values", async (MyDbContext db) =>
+{
+    try
+    {
+        var values = await db.KepleroCompare
+            .Select(x => x.StatoPratica_Keplero)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+        
+        return Results.Ok(values);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
 // SSRM endpoint for ag-Grid
 app.MapPost("/api/pivot-data", async (PivotRequest request, MyDbContext db) =>
 {
