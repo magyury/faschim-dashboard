@@ -200,4 +200,38 @@ export const fetchMismatchData = async (): Promise<MismatchResponse> => {
   }
 }
 
+// Keplero Compare Create
+export interface CreateCompareResponse {
+  success: boolean
+  message: string
+  timestamp?: string
+  cancelled?: boolean
+}
+
+export const createCompareData = async (signal?: AbortSignal): Promise<CreateCompareResponse> => {
+  try {
+    const response = await apiClient.post<CreateCompareResponse>(
+      '/keplero-compare/create-compare',
+      {},
+      { 
+        signal,
+        timeout: 600000 // 10 minutes timeout
+      }
+    )
+    return response.data
+  } catch (error: any) {
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+      return { success: false, message: 'Operation was cancelled by user', cancelled: true }
+    }
+    console.error('Error creating compare data:', error)
+    throw error
+  }
+}
+
+// Delta Faschim APIs
+export const fetchDeltaFaschimData = async (request: PivotRequest): Promise<PivotResponse> => {
+  const response = await apiClient.post<PivotResponse>('/delta-faschim', request)
+  return response.data
+}
+
 export default apiClient

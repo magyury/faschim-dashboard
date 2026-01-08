@@ -14,6 +14,10 @@
         <ExclamationTriangleIcon class="icon" />
         {{ showMismatch ? 'Hide Mismatch' : 'Show Mismatch' }}
       </button>
+      <button @click="showCreateCompare = !showCreateCompare" class="toggle-create-compare-btn">
+        <PlayIcon class="icon" />
+        {{ showCreateCompare ? 'Hide Create Compare' : 'Create Compare' }}
+      </button>
     </div>
 
     <!-- Statistics Cards -->
@@ -87,6 +91,49 @@
     <!-- Loading indicator -->
     <div v-if="loadingStats" class="loading-stats">
       Loading statistics...
+    </div>
+
+    <!-- Create Compare Section -->
+    <div class="create-compare-section" v-if="showCreateCompare">
+      <div class="create-compare-header">
+        <h2>Create Compare Data</h2>
+        <div class="create-compare-actions">
+          <button @click="runCreateCompare" class="btn-run-create-compare" :disabled="isCreatingCompare">
+            <ClockIcon v-if="isCreatingCompare" class="icon spinning" />
+            <PlayIcon v-else class="icon" />
+            {{ isCreatingCompare ? 'Running...' : 'Run' }}
+          </button>
+          <button 
+            v-if="isCreatingCompare" 
+            @click="cancelCreateCompare" 
+            class="btn-cancel-create-compare" 
+            title="Cancel operation"
+          >
+            <XMarkIcon class="icon" />
+            Cancel
+          </button>
+        </div>
+      </div>
+      
+      <div v-if="createCompareError" class="error-message">
+        <ExclamationTriangleIcon class="icon-inline" />
+        {{ createCompareError }}
+      </div>
+      
+      <div v-if="createCompareSuccess" class="success-message">
+        <CheckIcon class="icon-inline" />
+        {{ createCompareSuccess }}
+      </div>
+      
+      <div v-if="isCreatingCompare" class="create-compare-progress">
+        <div class="progress-info">
+          <ClockIcon class="icon-inline spinning" />
+          <span>Creating compare data... This may take several minutes. Please be patient.</span>
+        </div>
+        <div class="progress-note">
+          You can cancel this operation if needed by clicking the Cancel button.
+        </div>
+      </div>
     </div>
 
     <!-- Mismatch Section -->
@@ -293,11 +340,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import { fetchKepleroCompareData, fetchKepleroCompareStatistics, fetchCodaValues, fetchStatoPraticaValues, fetchStatoValues, fetchEsitoValues, fetchStatoKepleroValues, fetchMismatchData } from '@/services/api'
+import { fetchKepleroCompareData, fetchKepleroCompareStatistics, fetchCodaValues, fetchStatoPraticaValues, fetchStatoValues, fetchEsitoValues, fetchStatoKepleroValues, fetchMismatchData, createCompareData } from '@/services/api'
 import type { ColDef, GridApi, GridReadyEvent, IDatasource } from 'ag-grid-community'
 import type { KepleroCompareStatistics } from '@/services/api'
 import { useDarkMode } from '@/composables/useDarkMode'
-import { ChartBarIcon, MagnifyingGlassIcon, ExclamationTriangleIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { ChartBarIcon, MagnifyingGlassIcon, ExclamationTriangleIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -317,6 +364,13 @@ const mismatchData = ref<Array<{ protocollo: string }>>([])
 const isLoadingMismatch = ref<boolean>(false)
 const mismatchError = ref<string>('')
 const mismatchRan = ref<boolean>(false)
+
+// Create Compare state
+const showCreateCompare = ref<boolean>(false)
+const isCreatingCompare = ref<boolean>(false)
+const createCompareError = ref<string>('')
+const createCompareSuccess = ref<string>('')
+const createCompareAbortController = ref<AbortController | null>(null)
 
 const searchFilters = ref({
   itemId: '',
@@ -349,7 +403,21 @@ const columnDefs = ref<ColDef[]>([
     headerName: 'Item ID', 
     filter: 'agNumberColumnFilter', 
     sortable: true,
-    width: 120
+    width: 120,
+    cellRenderer: (params: any) => {
+      if (params.value) {
+        const link = document.createElement('a')
+        link.href = `https://kiaro4.winflow.it/app/#/factories/16/item/${params.value}`
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        link.innerText = params.value
+        link.style.color = '#1976d2'
+        link.style.textDecoration = 'underline'
+        link.style.cursor = 'pointer'
+        return link
+      }
+      return ''
+    }
   },
   { 
     field: 'coda', 
@@ -796,6 +864,55 @@ const runMismatch = async () => {
   }
 }
 
+const runCreateCompare = async () => {
+  isCreatingCompare.value = true
+  createCompareError.value = ''
+  createCompareSuccess.value = ''
+  
+  // Create abort controller for cancellation
+  createCompareAbortController.value = new AbortController()
+  
+  try {
+    const response = await createCompareData(createCompareAbortController.value.signal)
+    
+    if (response.success) {
+      createCompareSuccess.value = response.message || 'Compare data created successfully!'
+      // Reload statistics and refresh grid after successful creation
+      setTimeout(() => {
+        loadStatistics()
+        // Refresh the grid to show updated data
+        if (gridApi.value) {
+          totalRows.value = null
+          loadedRows.value = 0
+          gridApi.value.setGridOption('datasource', datasource.value)
+          console.log('Grid refreshed after create compare')
+        }
+      }, 1000)
+    } else if (response.cancelled) {
+      createCompareError.value = 'Operation was cancelled'
+    } else {
+      createCompareError.value = response.message || 'Failed to create compare data'
+    }
+  } catch (error: any) {
+    console.error('Error creating compare data:', error)
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+      createCompareError.value = 'Operation was cancelled by user'
+    } else {
+      createCompareError.value = error.message || 'An error occurred while creating compare data'
+    }
+  } finally {
+    isCreatingCompare.value = false
+    createCompareAbortController.value = null
+  }
+}
+
+const cancelCreateCompare = () => {
+  if (createCompareAbortController.value) {
+    createCompareAbortController.value.abort()
+    createCompareError.value = 'Cancelling operation...'
+  }
+}
+
 const loadStatistics = async () => {
   try {
     loadingStats.value = true
@@ -844,7 +961,8 @@ onMounted(async () => {
 
 .toggle-stats-btn,
 .toggle-search-btn,
-.toggle-mismatch-btn {
+.toggle-mismatch-btn,
+.toggle-create-compare-btn {
   padding: 10px 20px;
   background: #667eea;
   color: white;
@@ -861,9 +979,14 @@ onMounted(async () => {
   background: #ff9800;
 }
 
+.toggle-create-compare-btn {
+  background: #2196f3;
+}
+
 .toggle-stats-btn:hover,
 .toggle-search-btn:hover,
-.toggle-mismatch-btn:hover {
+.toggle-mismatch-btn:hover,
+.toggle-create-compare-btn:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
 }
@@ -877,9 +1000,14 @@ onMounted(async () => {
   background: #f57c00;
 }
 
+.toggle-create-compare-btn:hover {
+  background: #1976d2;
+}
+
 .toggle-stats-btn:active,
 .toggle-search-btn:active,
-.toggle-mismatch-btn:active {
+.toggle-mismatch-btn:active,
+.toggle-create-compare-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -903,6 +1031,129 @@ onMounted(async () => {
   background: #fff3e0;
   border-radius: 8px;
   border: 2px solid #ff9800;
+}
+
+.create-compare-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  border: 2px solid #2196f3;
+}
+
+.create-compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.create-compare-header h2 {
+  margin: 0;
+  color: #1565c0;
+}
+
+.create-compare-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-run-create-compare {
+  padding: 12px 24px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-run-create-compare:hover:not(:disabled) {
+  background: #1976d2;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-run-create-compare:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-run-create-compare:disabled {
+  background: #b0bec5;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-cancel-create-compare {
+  padding: 12px 24px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-cancel-create-compare:hover {
+  background: #d32f2f;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-cancel-create-compare:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.create-compare-progress {
+  margin-top: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 4px;
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1976d2;
+  margin-bottom: 12px;
+}
+
+.progress-note {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+  padding-left: 32px;
+}
+
+.success-message {
+  padding: 15px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border-left: 4px solid #4caf50;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mismatch-header {
@@ -1341,5 +1592,32 @@ h2 {
 
 :global(#app.dark-mode) .loading-stats {
   color: #b0b0b0;
+}
+
+/* Icon utilities */
+.icon {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-inline {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Spinning animation for loading states */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
 }
 </style>

@@ -84,8 +84,8 @@ app.MapGet("/api/test-faschim-auth", async (IConfiguration config) =>
         var loginUrl = $"{baseUri}{loginPath}";
         var loginContent = new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            { "username", userName },
-            { "password", password },
+            { "username", userName ?? "" },
+            { "password", password ?? "" },
             { "interni", "false" }
         });
         
@@ -1057,15 +1057,158 @@ app.MapGet("/api/keplero-compare/mismatch", async (MyDbContext db, IConfiguratio
         var storedProcName = config["KepleroCompare:MismatchStoredProcedure"] ?? "get_keplero_compare_mismatch";
         
         // Call stored procedure - assuming it returns protocollo values
+        // Note: storedProcName comes from configuration, not user input
+#pragma warning disable EF1002
         var protocollos = await db.Database
             .SqlQueryRaw<string>($"EXEC {storedProcName}")
             .ToListAsync();
+#pragma warning restore EF1002
         
         return Results.Ok(new { success = true, protocollos = protocollos, count = protocollos.Count });
     }
     catch (Exception ex)
     {
         return Results.Problem($"Error executing mismatch stored procedure: {ex.Message}");
+    }
+});
+
+// Endpoint to create keplero compare data (long-running operation)
+app.MapPost("/api/keplero-compare/create-compare", async (MyDbContext db, IConfiguration config, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var storedProcName = config["KepleroCompare:CreateCompareStoredProcedure"] ?? "create_keplero_compare";
+        
+        // Set extended command timeout for long-running stored procedure (10 minutes)
+        var commandTimeout = db.Database.GetCommandTimeout();
+        db.Database.SetCommandTimeout(600); // 600 seconds = 10 minutes
+        
+        try
+        {
+            // Call stored procedure with cancellation token support
+            // Note: storedProcName comes from configuration, not user input
+#pragma warning disable EF1002
+            await db.Database
+                .ExecuteSqlRawAsync($"EXEC {storedProcName}", cancellationToken);
+#pragma warning restore EF1002
+            
+            return Results.Ok(new { 
+                success = true, 
+                message = "Keplero compare data created successfully",
+                timestamp = DateTime.UtcNow 
+            });
+        }
+        finally
+        {
+            // Restore original command timeout
+            db.Database.SetCommandTimeout(commandTimeout);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Ok(new { 
+            success = false, 
+            message = "Operation was cancelled by user",
+            cancelled = true
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error executing create compare stored procedure: {ex.Message}");
+    }
+});
+
+// Endpoint for delta_faschim table
+app.MapPost("/api/delta-faschim", async (PivotRequest request, MyDbContext db) =>
+{
+    try
+    {
+        var query = db.DeltaFaschim.AsQueryable();
+
+        // Apply filters
+        if (request.FilterModel != null)
+        {
+            foreach (var filter in request.FilterModel)
+            {
+                var colId = filter.Key;
+                var filterValue = filter.Value;
+
+                if (filterValue.FilterType == "text" && filterValue.Filter != null)
+                {
+                    var searchValue = filterValue.Filter.ToString()?.ToLower() ?? "";
+                    var filterType = filterValue.Type?.ToLower() ?? "contains";
+                    
+                    if (filterType == "equals")
+                    {
+                        query = colId.ToLower() switch
+                        {
+                            "numeroprotocollo" => query.Where(x => x.NumeroProtocollo.ToLower() == searchValue),
+                            "statopratica" => query.Where(x => x.StatoPratica.ToLower() == searchValue),
+                            _ => query
+                        };
+                    }
+                    else // contains
+                    {
+                        query = colId.ToLower() switch
+                        {
+                            "numeroprotocollo" => query.Where(x => x.NumeroProtocollo.ToLower().Contains(searchValue)),
+                            "statopratica" => query.Where(x => x.StatoPratica.ToLower().Contains(searchValue)),
+                            _ => query
+                        };
+                    }
+                }
+                else if (filterValue.FilterType == "date" && filterValue.Filter != null)
+                {
+                    // AG Grid sends date filters as text in ISO format
+                    if (colId.ToLower() == "modified")
+                    {
+                        var dateStr = filterValue.Filter.ToString();
+                        if (DateTime.TryParse(dateStr, out var dateValue))
+                        {
+                            query = query.Where(x => x.Modified.Date == dateValue.Date);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sorting
+        if (request.SortModel != null && request.SortModel.Count > 0)
+        {
+            var firstSort = request.SortModel[0];
+            var isDescending = firstSort.Sort?.ToLower() == "desc";
+
+            query = firstSort.ColId.ToLower() switch
+            {
+                "numeroprotocollo" => isDescending ? query.OrderByDescending(x => x.NumeroProtocollo) : query.OrderBy(x => x.NumeroProtocollo),
+                "statopratica" => isDescending ? query.OrderByDescending(x => x.StatoPratica) : query.OrderBy(x => x.StatoPratica),
+                "modified" => isDescending ? query.OrderByDescending(x => x.Modified) : query.OrderBy(x => x.Modified),
+                _ => query.OrderBy(x => x.NumeroProtocollo)
+            };
+        }
+        else
+        {
+            query = query.OrderBy(x => x.NumeroProtocollo);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var data = await query
+            .Skip(request.StartRow)
+            .Take(request.EndRow - request.StartRow)
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            rowData = data,
+            rowCount = totalCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 });
 
