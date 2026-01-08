@@ -7,6 +7,17 @@
 *.userosscache
 *.sln.docstates
 
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+Backend/Data/LiteDb/
+Backend/Data/LiteDb/*.json
+
 # Frontend
 /Frontend/node_modules/
 /Frontend/dist/
