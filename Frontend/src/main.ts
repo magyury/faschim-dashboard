@@ -6,6 +6,9 @@ import router from './router'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
+// Custom icon styles
+import './assets/icons.css'
+
 const app = createApp(App)
 app.use(router)
 app.mount('#app')

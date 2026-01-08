@@ -120,4 +120,84 @@ export const fetchKepleroCompareStatistics = async (): Promise<KepleroCompareSta
   return response.data
 }
 
+// Scraper APIs
+export interface ScraperData {
+  id: number
+  url?: string
+  dataSource?: string
+  fetchDate?: string
+  status?: string
+  content?: string
+  errorMessage?: string
+  createdAt?: string
+}
+
+export interface ScraperFetchResponse {
+  success: boolean
+  searchId?: number
+  searchName?: string
+  totalRecords: number
+  recordsFetched: number
+  totalPages: number
+  faschimSuccess?: boolean
+  faschimCodErrore?: number
+  faschimMessage?: string
+}
+
+export const fetchDataFromFaschim = async (filter?: string, searchName?: string): Promise<ScraperFetchResponse> => {
+  try {
+    const params = new URLSearchParams()
+    if (filter) {
+      params.append('filter', filter)
+    }
+    if (searchName) {
+      params.append('searchName', searchName)
+    }
+    
+    const url = `/scraper/fetch-from-faschim${params.toString() ? '?' + params.toString() : ''}`
+    const response = await apiClient.get<ScraperFetchResponse>(url)
+    return response.data
+  } catch (error) {
+    console.error('Error fetching data from Faschim:', error)
+    throw error
+  }
+}
+
+export const fetchScraperData = async (): Promise<ScraperData[]> => {
+  try {
+    const response = await apiClient.get<ScraperData[]>('/scraper/data')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching scraper data:', error)
+    throw error
+  }
+}
+
+export const deleteScraperData = async (recordIds: number[]): Promise<{ success: boolean; deletedCount: number }> => {
+  try {
+    const response = await apiClient.post('/scraper/data/delete', recordIds)
+    return response.data
+  } catch (error) {
+    console.error('Error deleting scraper data:', error)
+    throw error
+  }
+}
+
+// Keplero Compare Mismatch
+export interface MismatchResponse {
+  success: boolean
+  protocollos: string[]
+  count: number
+}
+
+export const fetchMismatchData = async (): Promise<MismatchResponse> => {
+  try {
+    const response = await apiClient.get<MismatchResponse>('/keplero-compare/mismatch')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching mismatch data:', error)
+    throw error
+  }
+}
+
 export default apiClient

@@ -17,7 +17,7 @@ public class SortModel
 public class FilterModel
 {
     public string FilterType { get; set; } = string.Empty;
-    public string? Filter { get; set; }
+    public object? Filter { get; set; }
     public string? Type { get; set; }
 }
 

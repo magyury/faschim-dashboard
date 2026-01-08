@@ -20,27 +20,26 @@ public class MyDbContext : DbContext
     public DbSet<SecondTable> SecondTable { get; set; }
     
     // Keplero Compare table
-    public DbSet<KepleroCompare> KepleroCompare { get; set; }
+    public DbSet<KepleroCompareEntity> KepleroCompare { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         
-        // Configure first table
-        var tableName = _configuration["Database:TableName"] ?? "FullKeplero_Backup";
+        // Configure FullKeplero table
+        var tableName = _configuration["Database:TableName"] ?? "FullKeplero";
         modelBuilder.Entity<FullKeplero>(entity =>
         {
             entity.ToTable(tableName);
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.HasKey(e => e.NumeroProtocollo);
         });
         
-        // Configure keplero_compare_backup table
-        modelBuilder.Entity<KepleroCompare>(entity =>
+        // Configure keplero_compare table
+        var compareTableName = _configuration["Database:SecondTableName"] ?? "keplero_compare";
+        modelBuilder.Entity<KepleroCompareEntity>(entity =>
         {
-            entity.ToTable("keplero_compare_backup");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.ToTable(compareTableName);
+            entity.HasKey(e => e.Protocollo);
             
             // Indexes for better performance
             entity.HasIndex(e => e.ItemId);

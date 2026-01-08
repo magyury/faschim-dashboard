@@ -4,7 +4,9 @@
       <div class="header-left">
         <h2>Faschim Pivot Dashboard</h2>
         <button @click="toggleGrouped" class="group-toggle-btn">
-          {{ isGrouped ? '📋 Show All Rows' : '📊 Group by Protocollo' }}
+          <TableCellsIcon v-if="isGrouped" class="icon" />
+          <ChartBarIcon v-else class="icon" />
+          {{ isGrouped ? 'Show All Rows' : 'Group by Protocollo' }}
         </button>
       </div>
       <div v-if="totalRows !== null" class="row-count">
@@ -60,13 +62,19 @@
         </div>
       </div>
       <div class="search-actions">
-        <button @click="handleSearch" class="btn-search">🔍 Search</button>
-        <button @click="clearSearch" class="btn-clear">✖ Clear</button>
+        <button @click="handleSearch" class="btn-search">
+          <MagnifyingGlassIcon class="icon" />
+          Search
+        </button>
+        <button @click="clearSearch" class="btn-clear">
+          <span class="icon-text">✖</span>
+          Clear
+        </button>
       </div>
     </div>
 
     <ag-grid-vue
-      class="ag-theme-alpine"
+      :class="isDarkMode ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'"
       :columnDefs="isGrouped ? groupedColumnDefs : columnDefs"
       :defaultColDef="defaultColDef"
       :rowModelType="'infinite'"
@@ -78,10 +86,9 @@
       :maxBlocksInCache="10"
       :enableCellTextSelection="true"
       :ensureDomOrder="true"
-      :enableRangeSelection="true"
       @grid-ready="onGridReady"
       @cell-double-clicked="onCellDoubleClicked"
-      style="height: 600px;"
+      style="height: 500px; min-height: 400px;"
     />
   </div>
 </template>
@@ -91,8 +98,11 @@ import { ref, onMounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import { fetchPivotData, fetchStatoPraticaValues } from '@/services/api'
 import type { ColDef, GridApi, GridReadyEvent, IDatasource } from 'ag-grid-community'
+import { useDarkMode } from '@/composables/useDarkMode'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
+
+const { isDarkMode } = useDarkMode()
 
 const gridApi = ref<GridApi | null>(null)
 const totalRows = ref<number | null>(null)
@@ -152,22 +162,16 @@ const groupedColumnDefs = ref<ColDef[]>([
 
 const columnDefs = ref<ColDef[]>([
   { 
-    field: 'id', 
-    headerName: 'ID', 
-    filter: 'agNumberColumnFilter', 
+    field: 'numeroProtocollo', 
+    headerName: 'Protocollo', 
+    filter: 'agTextColumnFilter', 
     sortable: true,
-    width: 80,
+    width: 150,
     pinned: 'left'
   },
   { 
     field: 'utenteLiquidatore', 
     headerName: 'Utente Liquidatore', 
-    filter: 'agTextColumnFilter', 
-    sortable: true 
-  },
-  { 
-    field: 'numeroProtocollo', 
-    headerName: 'Protocollo', 
     filter: 'agTextColumnFilter', 
     sortable: true 
   },
@@ -386,7 +390,7 @@ onMounted(async () => {
 .pivot-grid {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  overflow-y: auto;
 }
 
 .grid-header {

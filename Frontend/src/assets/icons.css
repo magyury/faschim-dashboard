@@ -1,0 +1,39 @@
+/* Heroicons styles for buttons and inline use */
+
+/* Icon in buttons */
+button .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+/* Inline icons in text/messages */
+.icon-inline {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+/* Icon text (for non-svg icons like ✖) */
+.icon-text {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+/* Ensure icons don't shrink */
+button .icon,
+.icon-inline {
+  flex-shrink: 0;
+}
+
+/* Button content alignment */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

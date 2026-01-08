@@ -6,9 +6,10 @@ namespace FaschimPivotApp.Backend.Models;
 [Table("FullKeplero")]
 public class FullKeplero
 {
-    [Key]
-    public int Id { get; set; }
+    // [Key]
+    // public int Id { get; set; }
 
+    [Key]
     [Required]
     [MaxLength(50)]
     public string NumeroProtocollo { get; set; } = string.Empty;

@@ -12,7 +12,7 @@
       :infiniteInitialRowCount="1000"
       :maxBlocksInCache="10"
       @grid-ready="onGridReady"
-      style="height: 600px;"
+      style="height: 500px; min-height: 400px;"
     />
   </div>
 </template>
@@ -112,7 +112,7 @@ const onGridReady = (params: GridReadyEvent) => {
 .pivot-grid {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  overflow-y: auto;
 }
 
 .ag-theme-alpine {
